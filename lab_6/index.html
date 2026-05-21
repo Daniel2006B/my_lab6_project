@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doc.UA — редактор документів</title>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --bg-2: #e8eef8;
+      --panel: rgba(255,255,255,0.92);
+      --panel-solid: #ffffff;
+      --panel-2: #f8fafc;
+      --text: #0f172a;
+      --muted: #64748b;
+      --primary: #3157ff;
+      --primary-2: #7c3aed;
+      --primary-dark: #2444d8;
+      --danger: #ef4444;
+      --danger-dark: #dc2626;
+      --success: #22a447;
+      --success-dark: #15803d;
+      --border: #d9e2f0;
+      --shadow: 0 24px 70px rgba(15, 23, 42, 0.14);
+      --soft-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      --radius-xl: 30px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(circle at 10% 10%, rgba(49,87,255,0.12), transparent 28%),
+        radial-gradient(circle at 90% 0%, rgba(124,58,237,0.10), transparent 30%),
+        linear-gradient(135deg, var(--bg), var(--bg-2));
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(15,23,42,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15,23,42,0.035) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent 70%);
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(16px);
+      color: white;
+      padding: 18px 34px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 32px;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-weight: 900;
+      font-size: 26px;
+      letter-spacing: -0.8px;
+      white-space: nowrap;
+    }
+
+    .brand span {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #93c5fd, #86efac);
+      box-shadow: 0 12px 28px rgba(59,130,246,0.28);
+      font-size: 24px;
+    }
+
+    .top-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .top-nav a {
+      color: #cbd5e1;
+      text-decoration: none;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 11px 15px;
+      border-radius: 12px;
+      transition: background 0.18s ease, color 0.18s ease;
+    }
+
+    .top-nav a:hover {
+      color: white;
+      background: rgba(255,255,255,0.08);
+    }
+
+    .login-btn {
+      background: white;
+      color: #0f172a;
+      padding: 13px 24px;
+      border-radius: 15px;
+      border: none;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 10px 25px rgba(255,255,255,0.10);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 330px 1fr;
+      gap: 26px;
+      padding: 32px;
+      max-width: 1520px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .sidebar, .workspace, .info-card {
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(255,255,255,0.75);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+    }
+
+    .sidebar {
+      padding: 22px;
+      height: calc(100vh - 136px);
+      position: sticky;
+      top: 104px;
+      overflow: auto;
+    }
+
+    .sidebar h2, .workspace h2 {
+      margin: 0 0 18px;
+      font-size: 25px;
+      letter-spacing: -0.5px;
+    }
+
+    .new-btn, button {
+      border: none;
+      cursor: pointer;
+      border-radius: 15px;
+      font-weight: 850;
+      transition: transform 0.16s ease, opacity 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    button:hover, .new-btn:hover {
+      transform: translateY(-2px);
+      opacity: 0.97;
+    }
+
+    .new-btn {
+      width: 100%;
+      padding: 15px 18px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      color: white;
+      margin-bottom: 18px;
+      box-shadow: 0 14px 28px rgba(49,87,255,0.25);
+      font-size: 16px;
+    }
+
+    .doc-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .doc-item {
+      padding: 16px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: rgba(248,250,252,0.9);
+      cursor: pointer;
+      transition: transform 0.16s ease, border 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .doc-item:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--soft-shadow);
+    }
+
+    .doc-item.active {
+      border-color: rgba(49,87,255,0.65);
+      background: linear-gradient(135deg, #eff6ff, #f5f3ff);
+      box-shadow: 0 12px 26px rgba(49,87,255,0.13);
+    }
+
+    .doc-item-title {
+      font-weight: 900;
+      margin-bottom: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 17px;
+    }
+
+    .doc-item-meta {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .workspace {
+      padding: 24px;
+      min-height: calc(100vh - 136px);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      padding: 14px;
+      background: rgba(248,250,252,0.88);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      margin-bottom: 18px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+    }
+
+    .toolbar button {
+      padding: 12px 15px;
+      color: var(--text);
+      background: white;
+      border: 1px solid var(--border);
+      box-shadow: 0 6px 16px rgba(15,23,42,0.05);
+      font-size: 15px;
+    }
+
+    .toolbar button.primary {
+      background: linear-gradient(135deg, var(--primary), #4f46e5);
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 12px 24px rgba(49,87,255,0.22);
+    }
+
+    .toolbar button.success {
+      background: linear-gradient(135deg, var(--success), #16a34a);
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 12px 24px rgba(34,164,71,0.20);
+    }
+
+    .toolbar button.danger {
+      background: linear-gradient(135deg, var(--danger), var(--danger-dark));
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 12px 24px rgba(239,68,68,0.20);
+    }
+
+    .title-input {
+      width: 100%;
+      padding: 18px 20px;
+      border-radius: 22px;
+      border: 1px solid var(--border);
+      font-size: 28px;
+      font-weight: 950;
+      outline: none;
+      margin-bottom: 18px;
+      background: rgba(255,255,255,0.86);
+      letter-spacing: -0.8px;
+    }
+
+    .title-input:focus, .editor:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 5px rgba(49, 87, 255, 0.12);
+    }
+
+    .editor-wrap {
+      background:
+        radial-gradient(circle at top, rgba(49,87,255,0.08), transparent 35%),
+        linear-gradient(135deg, #dce3ef, #cfd8e8);
+      padding: 34px;
+      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,0.75);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.85);
+    }
+
+    .paper {
+      width: min(860px, 100%);
+      min-height: 820px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 24px 55px rgba(15, 23, 42, 0.18);
+      padding: 72px 78px;
+      position: relative;
+      border: 1px solid rgba(15,23,42,0.06);
+    }
+
+    .paper::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 7px;
+      border-radius: 12px 0 0 12px;
+      background: linear-gradient(to bottom, var(--primary), var(--primary-2));
+      opacity: 0.75;
+    }
+
+    .editor {
+      min-height: 650px;
+      outline: none;
+      border: 1px dashed transparent;
+      line-height: 1.72;
+      font-size: 18px;
+      color: #111827;
+    }
+
+    .editor h1 {
+      font-size: 42px;
+      letter-spacing: -1.3px;
+      margin-top: 0;
+    }
+
+    .stamp {
+      position: absolute;
+      right: 58px;
+      bottom: 58px;
+      width: 155px;
+      height: 155px;
+      border: 6px double #dc2626;
+      color: #dc2626;
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-weight: 950;
+      transform: rotate(-13deg);
+      opacity: 0.76;
+      font-size: 18px;
+      letter-spacing: 1.1px;
+      text-transform: uppercase;
+      pointer-events: none;
+      background: rgba(255,255,255,0.45);
+    }
+
+    .stamp.show { display: flex; }
+
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-top: 24px;
+    }
+
+    .info-card {
+      padding: 22px;
+      box-shadow: var(--soft-shadow);
+      border-radius: 24px;
+    }
+
+    .info-card h3 {
+      margin: 0 0 10px;
+      font-size: 19px;
+    }
+
+    .info-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 15px;
+      margin-left: auto;
+      background: white;
+      border: 1px solid var(--border);
+      padding: 10px 13px;
+      border-radius: 14px;
+    }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; padding: 16px; }
+      .sidebar { height: auto; position: static; }
+      .paper { padding: 38px 30px; min-height: 620px; }
+      .bottom-grid { grid-template-columns: 1fr; }
+      header { grid-template-columns: 1fr; gap: 14px; align-items: flex-start; }
+      .top-nav { flex-wrap: wrap; gap: 8px; }
+      .brand { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand"><span>📄</span> Doc.UA</div>
+
+    <nav class="top-nav">
+      <a href="#">Документи</a>
+      <a href="#">Шаблони</a>
+      <a href="#">Безпека</a>
+      <a href="#">Підтримка</a>
+    </nav>
+
+    <button class="login-btn">Увійти</button>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <h2>Мої документи</h2>
+      <button class="new-btn" onclick="createDocument()">+ Новий документ</button>
+      <div class="doc-list" id="docList"></div>
+    </aside>
+
+    <section class="workspace">
+      <h2>Редактор документа</h2>
+
+      <div class="toolbar">
+        <button onclick="formatText('bold')"><b>B</b></button>
+        <button onclick="formatText('italic')"><i>I</i></button>
+        <button onclick="formatText('underline')"><u>U</u></button>
+        <button onclick="formatText('insertUnorderedList')">• Список</button>
+        <button onclick="formatText('justifyLeft')">Ліворуч</button>
+        <button onclick="formatText('justifyCenter')">Центр</button>
+        <button class="success" onclick="toggleStamp()">Поставити печатку</button>
+        <button class="primary" onclick="saveDocument()">Зберегти</button>
+        <button class="danger" onclick="deleteDocument()">Видалити</button>
+        <span class="status" id="status">Готово</span>
+      </div>
+
+      <input class="title-input" id="docTitle" placeholder="Назва документа" oninput="markUnsaved()" />
+
+      <div class="editor-wrap">
+        <div class="paper">
+          <div class="editor" id="editor" contenteditable="true" oninput="markUnsaved()"></div>
+          <div class="stamp" id="stamp">Підтверджено<br>Doc.UA</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let documents = [];
+    let activeId = null;
+    let unsaved = false;
+
+    function defaultDocuments() {
+      return [
+        {
+          id: Date.now(),
+          title: 'Лабораторна робота HTTPS',
+          content: '<h1>Лабораторна робота</h1><p><b>Тема:</b> Розгортання веб-сайту та налаштування HTTPS.</p><p>Цей документ створено у вебредакторі Doc.UA. Сайт демонструє роботу статичного вебдодатку, який можна розгорнути на GitHub Pages із захищеним протоколом HTTPS.</p>',
+          stamped: false,
+          updated: new Date().toLocaleString('uk-UA')
+        }
+      ];
+    }
+
+    function loadDocuments() {
+      const saved = localStorage.getItem('docua_documents');
+      documents = saved ? JSON.parse(saved) : defaultDocuments();
+      activeId = documents[0]?.id || null;
+      renderList();
+      loadActiveDocument();
+    }
+
+    function persist() {
+      localStorage.setItem('docua_documents', JSON.stringify(documents));
+    }
+
+    function renderList() {
+      const list = document.getElementById('docList');
+      list.innerHTML = '';
+
+      documents.forEach(doc => {
+        const item = document.createElement('div');
+        item.className = 'doc-item' + (doc.id === activeId ? ' active' : '');
+        item.onclick = () => switchDocument(doc.id);
+        item.innerHTML = `
+          <div class="doc-item-title">${escapeHtml(doc.title || 'Без назви')}</div>
+          <div class="doc-item-meta">Оновлено: ${doc.updated}</div>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function loadActiveDocument() {
+      const doc = documents.find(d => d.id === activeId);
+      if (!doc) return;
+
+      document.getElementById('docTitle').value = doc.title;
+      document.getElementById('editor').innerHTML = doc.content;
+      document.getElementById('stamp').classList.toggle('show', doc.stamped);
+      unsaved = false;
+      setStatus('Документ відкрито');
+    }
+
+    function switchDocument(id) {
+      if (unsaved) saveDocument(false);
+      activeId = id;
+      renderList();
+      loadActiveDocument();
+    }
+
+    function createDocument() {
+      const doc = {
+        id: Date.now(),
+        title: 'Новий документ',
+        content: '<h1>Новий документ</h1><p>Почніть вводити текст...</p>',
+        stamped: false,
+        updated: new Date().toLocaleString('uk-UA')
+      };
+      documents.unshift(doc);
+      activeId = doc.id;
+      persist();
+      renderList();
+      loadActiveDocument();
+      setStatus('Створено новий документ');
+    }
+
+    function saveDocument(showMessage = true) {
+      const doc = documents.find(d => d.id === activeId);
+      if (!doc) return;
+
+      doc.title = document.getElementById('docTitle').value || 'Без назви';
+      doc.content = document.getElementById('editor').innerHTML;
+      doc.stamped = document.getElementById('stamp').classList.contains('show');
+      doc.updated = new Date().toLocaleString('uk-UA');
+
+      persist();
+      renderList();
+      unsaved = false;
+      if (showMessage) setStatus('Збережено');
+    }
+
+    function deleteDocument() {
+      if (!activeId) return;
+      if (!confirm('Видалити цей документ?')) return;
+
+      documents = documents.filter(d => d.id !== activeId);
+      if (documents.length === 0) documents = defaultDocuments();
+      activeId = documents[0].id;
+      persist();
+      renderList();
+      loadActiveDocument();
+      setStatus('Документ видалено');
+    }
+
+    function toggleStamp() {
+      document.getElementById('stamp').classList.toggle('show');
+      markUnsaved();
+      setStatus('Стан печатки змінено');
+    }
+
+    function formatText(command) {
+      document.execCommand(command, false, null);
+      document.getElementById('editor').focus();
+      markUnsaved();
+    }
+
+    function markUnsaved() {
+      unsaved = true;
+      setStatus('Є незбережені зміни');
+    }
+
+    function setStatus(text) {
+      document.getElementById('status').textContent = text;
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/[&<>'"]/g, function(char) {
+        const map = {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '\'': '&#039;',
+          '"': '&quot;'
+        };
+        return map[char];
+      });
+    }
+
+    loadDocuments();
+  </script>
+</body>
+</html>
